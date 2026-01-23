@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Home - Painéis BI{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h1 class="display-5 mb-3">
+                        <i class="bi bi-house-door-fill text-primary"></i> 
+                        Bem-vindo ao Sistema de Painéis BI
+                    </h1>
+                    <p class="lead text-muted mb-0">
+                        Olá, <strong>{{ user.get_full_name|default:user.username }}</strong>!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Info Section -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-person-badge text-primary"></i> Informações do Usuário
+                    </h5>
+                    <hr>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <strong>Usuário:</strong> {{ user.username }}
+                        </li>
+                        <li class="mb-2">
+                            <strong>Nome:</strong> {{ user.get_full_name|default:"Não informado" }}
+                        </li>
+                        <li class="mb-2">
+                            <strong>Email:</strong> {{ user.email|default:"Não informado" }}
+                        </li>
+                        <li class="mb-2">
+                            <strong>Último acesso:</strong> 
+                            {% if user.last_login %}
+                                {{ user.last_login|date:"d/m/Y H:i" }}
+                            {% else %}
+                                Primeiro acesso
+                            {% endif %}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-people-fill text-primary"></i> Grupos e Permissões
+                    </h5>
+                    <hr>
+                    {% if grupos %}
+                        <p class="mb-3">Você pertence aos seguintes grupos:</p>
+                        <div class="mb-3">
+                            {% for grupo in grupos %}
+                                <span class="badge bg-primary me-2 mb-2 p-2">
+                                    <i class="bi bi-shield-check"></i> {{ grupo.name }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                        
+                        {% if is_gestao %}
+                            <div class="alert alert-success mb-0" role="alert">
+                                <i class="bi bi-star-fill"></i> 
+                                <strong>Acesso Total:</strong> Você tem permissões de gestão completas no sistema.
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info mb-0" role="alert">
+                                <i class="bi bi-info-circle-fill"></i> 
+                                <strong>Acesso Limitado:</strong> Suas permissões são baseadas nos grupos atribuídos.
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-warning mb-0" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill"></i> 
+                            Você não está associado a nenhum grupo. Entre em contato com o administrador.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modules Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-grid-3x3-gap-fill text-primary"></i> Módulos Disponíveis
+                    </h5>
+                    <hr>
+                    
+                    {% if is_gestao %}
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <a href="{% url 'accounts:gestao_dashboard' %}" class="text-decoration-none">
+                                    <div class="card border-primary h-100">
+                                        <div class="card-body text-center">
+                                            <i class="bi bi-shield-check display-4 text-success"></i>
+                                            <h6 class="mt-3">Dashboard Gestão</h6>
+                                            <p class="text-muted small">Área exclusiva de gestão</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-primary">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-graph-up display-4 text-primary"></i>
+                                        <h6 class="mt-3">Relatórios Gerenciais</h6>
+                                        <p class="text-muted small">Em desenvolvimento</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-primary">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-bar-chart display-4 text-primary"></i>
+                                        <h6 class="mt-3">Dashboards</h6>
+                                        <p class="text-muted small">Em desenvolvimento</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-primary">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-gear display-4 text-primary"></i>
+                                        <h6 class="mt-3">Configurações</h6>
+                                        <p class="text-muted small">Em desenvolvimento</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle-fill"></i> 
+                            Os módulos disponíveis serão exibidos de acordo com as permissões do seu grupo.
+                            <strong>Em breve novos módulos serão adicionados.</strong>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Info -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-light border" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-shield-lock-fill text-success fs-3 me-3"></i>
+                    <div>
+                        <strong>Segurança:</strong> Sua sessão está protegida com criptografia e expira após 30 minutos de inatividade.
+                        Sempre faça logout ao terminar de usar o sistema.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

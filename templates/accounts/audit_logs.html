@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Logs de Auditoria - Painéis BI{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+<style>
+    .log-table {
+        font-size: 0.9rem;
+    }
+    .log-row {
+        transition: background-color 0.2s;
+    }
+    .log-row:hover {
+        background-color: #f8f9fa;
+    }
+    .badge-action {
+        min-width: 100px;
+    }
+    .filter-card {
+        background: #f8f9fa;
+    }
+    .stat-card {
+        border-left: 4px solid;
+    }
+    .stat-card.info {
+        border-color: #0dcaf0;
+    }
+    .stat-card.success {
+        border-color: #198754;
+    }
+    .stat-card.warning {
+        border-color: #ffc107;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Cabeçalho -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="bi bi-clipboard-data text-primary"></i> Logs de Auditoria</h2>
+                    <p class="text-muted mb-0">Histórico completo de ações no sistema</p>
+                </div>
+                <a href="{% url 'accounts:gestao_dashboard' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card stat-card info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total de Registros</h6>
+                            <h3 class="mb-0">{{ total_logs }}</h3>
+                        </div>
+                        <i class="bi bi-list-ul fs-1 text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total de Logins</h6>
+                            <h3 class="mb-0">{{ total_logins }}</h3>
+                        </div>
+                        <i class="bi bi-box-arrow-in-right fs-1 text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Acessos Negados</h6>
+                            <h3 class="mb-0">{{ total_access_denied }}</h3>
+                        </div>
+                        <i class="bi bi-shield-x fs-1 text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <h6 class="card-title mb-3">
+                <i class="bi bi-funnel"></i> Filtros
+            </h6>
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="action" class="form-label">Tipo de Ação</label>
+                    <select name="action" id="action" class="form-select">
+                        <option value="">Todas</option>
+                        {% for value, label in action_choices %}
+                        <option value="{{ value }}" {% if action_filter == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="user" class="form-label">Usuário</label>
+                    <input type="text" name="user" id="user" class="form-control" 
+                           placeholder="Nome do usuário" value="{{ user_filter }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date" class="form-label">Data</label>
+                    <input type="date" name="date" id="date" class="form-control" value="{{ date_filter }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                    <a href="{% url 'accounts:audit_logs' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de Logs -->
+    <div class="card">
+        <div class="card-body p-0">
+            {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover log-table mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 180px;">Data e Hora</th>
+                            <th style="width: 150px;">Usuário</th>
+                            <th style="width: 130px;">Ação</th>
+                            <th>Descrição</th>
+                            <th style="width: 120px;">IP</th>
+                            <th style="width: 100px;">Severidade</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in page_obj %}
+                        <tr class="log-row">
+                            <td>
+                                <small>
+                                    <i class="bi bi-calendar3"></i> {{ log.timestamp|date:"d/m/Y" }}<br>
+                                    <i class="bi bi-clock"></i> {{ log.timestamp|date:"H:i:s" }}
+                                </small>
+                            </td>
+                            <td>
+                                <strong>{{ log.username }}</strong>
+                                {% if log.user %}
+                                <br><small class="text-muted">{{ log.user.get_full_name }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-primary badge-action">
+                                    <i class="{{ log.action_icon }}"></i> {{ log.get_action_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {{ log.description }}
+                                {% if log.path %}
+                                <br><small class="text-muted">
+                                    <i class="bi bi-link-45deg"></i> {{ log.path }}
+                                </small>
+                                {% endif %}
+                            </td>
+                            <td><small class="font-monospace">{{ log.ip_address|default:"—" }}</small></td>
+                            <td>
+                                <span class="badge {{ log.severity_badge_class }}">
+                                    {{ log.get_severity_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            {% if page_obj.has_other_pages %}
+            <div class="card-footer bg-light">
+                <nav aria-label="Navegação de logs">
+                    <ul class="pagination mb-0 justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if action_filter %}&action={{ action_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}">
+                                Primeira
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}">
+                                Anterior
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}">
+                                Próxima
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}">
+                                Última
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="text-center p-5">
+                <i class="bi bi-inbox fs-1 text-muted"></i>
+                <p class="text-muted mt-3">Nenhum log encontrado com os filtros aplicados.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Informações -->
+    <div class="alert alert-info mt-4" role="alert">
+        <i class="bi bi-info-circle-fill"></i>
+        <strong>Sobre os Logs:</strong> Os logs de auditoria registram todas as ações importantes no sistema, 
+        incluindo logins, logouts, acessos a páginas e tentativas de acesso não autorizado. 
+        Estes registros são essenciais para segurança e conformidade.
+    </div>
+</div>
+{% endblock %}

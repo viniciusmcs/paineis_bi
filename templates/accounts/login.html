@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Login - Painéis BI{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/login.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <i class="bi bi-bar-chart-fill"></i>
+            <h2 class="mb-0">Painéis BI</h2>
+            <p class="mb-0 mt-2">Sistema de Business Intelligence</p>
+        </div>
+        <div class="login-body">
+            <h4 class="text-center mb-4 text-muted">Acesse sua conta</h4>
+            
+            <form method="post" action="{% url 'accounts:login' %}" novalidate>
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="username" class="form-label">
+                        <i class="bi bi-person"></i> Usuário
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                        <input type="text" 
+                               class="form-control" 
+                               id="username" 
+                               name="username" 
+                               placeholder="Digite seu usuário"
+                               required 
+                               autofocus
+                               autocomplete="username"
+                               maxlength="150">
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="password" class="form-label">
+                        <i class="bi bi-lock"></i> Senha
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                        <input type="password" 
+                               class="form-control" 
+                               id="password" 
+                               name="password" 
+                               placeholder="Digite sua senha"
+                               required
+                               autocomplete="current-password"
+                               maxlength="128">
+                    </div>
+                </div>
+                
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-login">
+                        <i class="bi bi-box-arrow-in-right"></i> Entrar
+                    </button>
+                </div>
+            </form>
+            
+            <div class="text-center mt-4">
+                <small class="text-muted">
+                    <i class="bi bi-shield-lock-fill"></i> 
+                    Acesso seguro e protegido
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
