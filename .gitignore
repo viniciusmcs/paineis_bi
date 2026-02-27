@@ -33,3 +33,7 @@ Thumbs.db
 
 # Environment variables
 .env
+
+# Documentação local (não publicar)
+*.md
+!README.md
