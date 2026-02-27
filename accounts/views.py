@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -7,7 +7,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.debug import sensitive_post_parameters
 from django.core.paginator import Paginator
 from .decorators import gestao_required
-from .models import AuditLog
+from .models import AuditLog, CategoriaPainel, PainelBI
 from .audit_utils import log_login, log_logout, log_view, log_access_denied
 
 
@@ -162,3 +162,67 @@ def audit_logs_view(request):
     }
     
     return render(request, 'accounts/audit_logs.html', context)
+
+
+@login_required
+def paineis_view(request, painel_id=None):
+    """
+    View principal dos Painéis BI com menu lateral.
+    - Grupo Gestão: vê TODOS os painéis de todas as categorias.
+    - Outros grupos: vêem apenas os painéis vinculados ao seu grupo.
+    """
+    user = request.user
+    is_gestao = user.groups.filter(name='Gestão').exists() or user.is_superuser
+    user_group_ids = list(user.groups.values_list('id', flat=True))
+    
+    # Filtra painéis conforme o grupo do usuário
+    if is_gestao:
+        paineis_permitidos = PainelBI.objects.filter(ativo=True, categoria__ativo=True)
+    else:
+        # Usuário comum: só vê painéis do seu grupo
+        paineis_permitidos = PainelBI.objects.filter(
+            ativo=True,
+            categoria__ativo=True,
+            grupo_acesso__id__in=user_group_ids
+        )
+    
+    # IDs dos painéis permitidos para filtrar categorias
+    paineis_ids = paineis_permitidos.values_list('id', flat=True)
+    
+    # Só exibe categorias que tenham painéis permitidos
+    categorias_ids = paineis_permitidos.values_list('categoria_id', flat=True).distinct()
+    categorias = CategoriaPainel.objects.filter(
+        id__in=categorias_ids, ativo=True
+    ).prefetch_related('paineis')
+    
+    painel_selecionado = None
+    categoria_ativa = None
+    
+    if painel_id:
+        painel_selecionado = get_object_or_404(PainelBI, id=painel_id, ativo=True)
+        # Verifica permissão: Gestão pode tudo, outros só o próprio grupo
+        if not is_gestao and painel_selecionado.grupo_acesso_id not in user_group_ids:
+            log_access_denied(user, request, request.path)
+            messages.error(request, 'Você não tem permissão para acessar este painel.')
+            return redirect('accounts:paineis_bi')
+        categoria_ativa = painel_selecionado.categoria
+        log_view(user, request, f'Painel BI: {painel_selecionado.titulo}')
+    else:
+        # Seleciona o primeiro painel disponível
+        primeiro_painel = paineis_permitidos.first()
+        if primeiro_painel:
+            painel_selecionado = primeiro_painel
+            categoria_ativa = primeiro_painel.categoria
+            log_view(user, request, f'Painéis BI (auto: {primeiro_painel.titulo})')
+        else:
+            log_view(user, request, 'Painéis BI (sem painéis disponíveis)')
+    
+    context = {
+        'categorias': categorias,
+        'painel_selecionado': painel_selecionado,
+        'categoria_ativa': categoria_ativa,
+        'is_gestao': is_gestao,
+        'paineis_ids': set(paineis_ids),
+    }
+    
+    return render(request, 'accounts/paineis_bi.html', context)

@@ -9,4 +9,6 @@ urlpatterns = [
     path('', views.home_view, name='home'),
     path('gestao/dashboard/', views.gestao_dashboard, name='gestao_dashboard'),
     path('gestao/logs/', views.audit_logs_view, name='audit_logs'),
+    path('paineis/', views.paineis_view, name='paineis_bi'),
+    path('paineis/<int:painel_id>/', views.paineis_view, name='paineis_bi_detalhe'),
 ]

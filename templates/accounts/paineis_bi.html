@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Painéis BI - Dashboards{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/paineis_bi.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="paineis-container">
+    <!-- Sidebar Menu -->
+    <aside class="paineis-sidebar" id="paineisSidebar">
+        <div class="sidebar-header">
+            <h5 class="mb-0">
+                <i class="bi bi-bar-chart-fill"></i> Dashboards
+            </h5>
+            <button class="btn btn-sm btn-link text-white d-lg-none" id="closeSidebar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            {% if categorias %}
+                {% for categoria in categorias %}
+                    <div class="sidebar-category">
+                        <button class="sidebar-category-btn {% if categoria_ativa and categoria_ativa.id == categoria.id %}active{% endif %}"
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#cat-{{ categoria.id }}"
+                                aria-expanded="{% if categoria_ativa and categoria_ativa.id == categoria.id %}true{% else %}false{% endif %}">
+                            <span>
+                                <i class="bi {{ categoria.icone }}"></i>
+                                {{ categoria.nome }}
+                            </span>
+                            <i class="bi bi-chevron-down collapse-icon"></i>
+                        </button>
+                        
+                        <div class="collapse {% if categoria_ativa and categoria_ativa.id == categoria.id %}show{% endif %}" 
+                             id="cat-{{ categoria.id }}">
+                            <ul class="sidebar-panel-list">
+                                {% for painel in categoria.paineis_ativos %}
+                                    {% if painel.id in paineis_ids %}
+                                    <li>
+                                        <a href="{% url 'accounts:paineis_bi_detalhe' painel.id %}"
+                                           class="sidebar-panel-link {% if painel_selecionado and painel_selecionado.id == painel.id %}active{% endif %}">
+                                            <i class="bi {{ painel.icone }}"></i>
+                                            <span>{{ painel.titulo }}</span>
+                                            {% if not painel.tem_iframe %}
+                                                <span class="badge bg-warning text-dark ms-auto" title="URL do iframe não configurada">
+                                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                                </span>
+                                            {% endif %}
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                {% empty %}
+                                    <li class="sidebar-empty">
+                                        <small class="text-muted">Nenhum painel nesta categoria</small>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="sidebar-empty-state">
+                    <i class="bi bi-inbox display-4"></i>
+                    <p class="mt-2 mb-0">Nenhuma categoria cadastrada</p>
+                    <small class="text-muted">Use o painel Admin para cadastrar</small>
+                </div>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{% url 'accounts:home' %}" class="btn btn-outline-light btn-sm w-100">
+                <i class="bi bi-arrow-left"></i> Voltar para Home
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="paineis-main">
+        <!-- Top Bar (mobile) -->
+        <div class="paineis-topbar d-lg-none">
+            <button class="btn btn-primary btn-sm" id="openSidebar">
+                <i class="bi bi-list"></i> Menu
+            </button>
+            {% if painel_selecionado %}
+                <span class="topbar-title">{{ painel_selecionado.titulo }}</span>
+            {% endif %}
+        </div>
+
+        {% if painel_selecionado %}
+            <!-- Painel Header -->
+            <div class="painel-header">
+                <div class="d-flex align-items-center justify-content-between flex-wrap">
+                    <div>
+                        <h4 class="mb-1">
+                            <i class="bi {{ painel_selecionado.icone }} text-primary"></i>
+                            {{ painel_selecionado.titulo }}
+                        </h4>
+                        {% if painel_selecionado.descricao %}
+                            <p class="text-muted mb-0 small">{{ painel_selecionado.descricao }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="painel-actions">
+                        <span class="badge bg-primary">
+                            <i class="bi {{ painel_selecionado.categoria.icone }}"></i>
+                            {{ painel_selecionado.categoria.nome }}
+                        </span>
+                        {% if painel_selecionado.tem_iframe %}
+                            <button class="btn btn-sm btn-outline-secondary ms-2" id="btnFullscreen" title="Tela cheia">
+                                <i class="bi bi-arrows-fullscreen"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary ms-1" id="btnRefresh" title="Recarregar painel">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Iframe Container -->
+            <div class="painel-iframe-container" id="iframeContainer">
+                {% if painel_selecionado.tem_iframe %}
+                    <div class="iframe-loading" id="iframeLoading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Carregando painel...</p>
+                    </div>
+                    <iframe 
+                        id="painelIframe"
+                        src="{{ painel_selecionado.iframe_url }}"
+                        frameborder="0"
+                        allowfullscreen="true"
+                        class="painel-iframe"
+                        loading="lazy"
+                        onload="document.getElementById('iframeLoading').style.display='none';">
+                    </iframe>
+                {% else %}
+                    <div class="painel-no-iframe">
+                        <div class="text-center">
+                            <i class="bi bi-link-45deg display-1 text-muted"></i>
+                            <h5 class="mt-3 text-muted">URL do iframe não configurada</h5>
+                            <p class="text-muted">
+                                Para exibir o painel Power BI, configure a URL de incorporação no 
+                                <a href="/admin/accounts/painelbi/{{ painel_selecionado.id }}/change/" target="_blank">
+                                    Painel Administrativo
+                                </a>.
+                            </p>
+                            <div class="card mt-4 text-start" style="max-width: 600px; margin: 0 auto;">
+                                <div class="card-header bg-light">
+                                    <i class="bi bi-info-circle"></i> Como obter a URL de incorporação do Power BI
+                                </div>
+                                <div class="card-body">
+                                    <ol class="mb-0 small">
+                                        <li>Abra o relatório no Power BI Service</li>
+                                        <li>Clique em <strong>Arquivo &gt; Inserir relatório &gt; Site ou portal</strong></li>
+                                        <li>Copie a URL do iframe gerada</li>
+                                        <li>Cole no campo "URL do iframe" no Admin</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+        {% else %}
+            <!-- No Panel Selected -->
+            <div class="painel-empty-state">
+                <div class="text-center">
+                    <i class="bi bi-clipboard2-data display-1 text-primary opacity-50"></i>
+                    <h4 class="mt-4 text-muted">Nenhum painel disponível</h4>
+                    <p class="text-muted">
+                        Cadastre painéis Power BI pelo 
+                        <a href="/admin/accounts/painelbi/add/" target="_blank">Painel Administrativo</a>
+                        para começar a visualizá-los aqui.
+                    </p>
+                    <a href="{% url 'accounts:home' %}" class="btn btn-primary mt-2">
+                        <i class="bi bi-arrow-left"></i> Voltar para Home
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </main>
+</div>
+
+<!-- Overlay for mobile sidebar -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Sidebar toggle (mobile)
+    const sidebar = document.getElementById('paineisSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const openBtn = document.getElementById('openSidebar');
+    const closeBtn = document.getElementById('closeSidebar');
+
+    function openSidebar() {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+    }
+
+    function closeSidebar() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+    }
+
+    if (openBtn) openBtn.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (overlay) overlay.addEventListener('click', closeSidebar);
+
+    // Fullscreen toggle
+    const btnFullscreen = document.getElementById('btnFullscreen');
+    const iframeContainer = document.getElementById('iframeContainer');
+
+    if (btnFullscreen && iframeContainer) {
+        btnFullscreen.addEventListener('click', function() {
+            if (iframeContainer.requestFullscreen) {
+                iframeContainer.requestFullscreen();
+            } else if (iframeContainer.webkitRequestFullscreen) {
+                iframeContainer.webkitRequestFullscreen();
+            } else if (iframeContainer.msRequestFullscreen) {
+                iframeContainer.msRequestFullscreen();
+            }
+        });
+    }
+
+    // Refresh iframe
+    const btnRefresh = document.getElementById('btnRefresh');
+    const painelIframe = document.getElementById('painelIframe');
+
+    if (btnRefresh && painelIframe) {
+        btnRefresh.addEventListener('click', function() {
+            const loading = document.getElementById('iframeLoading');
+            if (loading) loading.style.display = 'flex';
+            painelIframe.src = painelIframe.src;
+        });
+    }
+</script>
+{% endblock %}

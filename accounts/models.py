@@ -141,3 +141,109 @@ class AuditLog(models.Model):
             'ERROR': 'bi-exclamation-triangle',
         }
         return icon_map.get(self.action, 'bi-info-circle')
+
+
+class CategoriaPainel(models.Model):
+    """
+    Categoria/Menu lateral para agrupar painéis Power BI.
+    Ex: PAINÉIS GOV, PAINÉIS RH, etc.
+    """
+    nome = models.CharField(
+        max_length=100,
+        verbose_name='Nome da Categoria'
+    )
+    icone = models.CharField(
+        max_length=50,
+        default='bi-bar-chart-line',
+        verbose_name='Ícone Bootstrap',
+        help_text='Classe do Bootstrap Icons (ex: bi-bar-chart-line)'
+    )
+    ordem = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Ordem de Exibição'
+    )
+    ativo = models.BooleanField(
+        default=True,
+        verbose_name='Ativo'
+    )
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name='Criado em')
+    atualizado_em = models.DateTimeField(auto_now=True, verbose_name='Atualizado em')
+
+    class Meta:
+        verbose_name = 'Categoria de Painel'
+        verbose_name_plural = 'Categorias de Painéis'
+        ordering = ['ordem', 'nome']
+
+    def __str__(self):
+        return self.nome
+
+    @property
+    def paineis_ativos(self):
+        return self.paineis.filter(ativo=True)
+
+
+class PainelBI(models.Model):
+    """
+    Painel Power BI a ser exibido via iframe.
+    Cada painel pertence a uma categoria (menu lateral).
+    Pode ser vinculado a um grupo específico para controle de acesso.
+    """
+    categoria = models.ForeignKey(
+        CategoriaPainel,
+        on_delete=models.CASCADE,
+        related_name='paineis',
+        verbose_name='Categoria'
+    )
+    grupo_acesso = models.ForeignKey(
+        'auth.Group',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paineis_bi',
+        verbose_name='Grupo de Acesso',
+        help_text='Grupo que pode visualizar este painel. Vazio = visível para todos com acesso à categoria.'
+    )
+    titulo = models.CharField(
+        max_length=200,
+        verbose_name='Título do Painel'
+    )
+    descricao = models.TextField(
+        blank=True,
+        verbose_name='Descrição',
+        help_text='Breve descrição do painel'
+    )
+    iframe_url = models.URLField(
+        max_length=2000,
+        blank=True,
+        verbose_name='URL do iframe (Power BI)',
+        help_text='Cole aqui a URL de incorporação do Power BI'
+    )
+    icone = models.CharField(
+        max_length=50,
+        default='bi-file-earmark-bar-graph',
+        verbose_name='Ícone Bootstrap',
+        help_text='Classe do Bootstrap Icons (ex: bi-file-earmark-bar-graph)'
+    )
+    ordem = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Ordem de Exibição'
+    )
+    ativo = models.BooleanField(
+        default=True,
+        verbose_name='Ativo'
+    )
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name='Criado em')
+    atualizado_em = models.DateTimeField(auto_now=True, verbose_name='Atualizado em')
+
+    class Meta:
+        verbose_name = 'Painel BI'
+        verbose_name_plural = 'Painéis BI'
+        ordering = ['categoria__ordem', 'ordem', 'titulo']
+
+    def __str__(self):
+        grupo_str = f" [{self.grupo_acesso.name}]" if self.grupo_acesso else ""
+        return f"{self.categoria.nome} - {self.titulo}{grupo_str}"
+
+    @property
+    def tem_iframe(self):
+        return bool(self.iframe_url)
